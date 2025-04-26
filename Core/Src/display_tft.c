@@ -8,14 +8,14 @@
 #define TFT_HEIGHT  160
 
 // === Private defines ===
-#define DC_PIN      GPIO_PIN_0   // <-- dopasuj!
-#define DC_PORT     GPIOA        // <-- dopasuj!
+#define DC_PIN      GPIO_PIN_0
+#define DC_PORT     GPIOA
 
-#define RESET_PIN   GPIO_PIN_1   // <-- dopasuj!
-#define RESET_PORT  GPIOA        // <-- dopasuj!
+#define RESET_PIN   GPIO_PIN_1
+#define RESET_PORT  GPIOA
 
-#define CS_PIN      GPIO_PIN_4   // <-- dopasuj!
-#define CS_PORT     GPIOA        // <-- dopasuj!
+#define CS_PIN      GPIO_PIN_4
+#define CS_PORT     GPIOA
 
 // === Private variables ===
 static SPI_HandleTypeDef *tft_hspi;
@@ -73,7 +73,7 @@ void TFT_FillScreen(uint16_t color) {
     uint8_t data_col[] = {0x00, 0x00, 0x00, TFT_WIDTH - 1};
     TFT_WriteData(data_col, sizeof(data_col));
 
-    TFT_WriteCommand(0x2B); // Row addr set
+    TFT_WriteCommand(0x2B); // Row address set
     uint8_t data_row[] = {0x00, 0x00, 0x00, TFT_HEIGHT - 1};
     TFT_WriteData(data_row, sizeof(data_row));
 
@@ -96,11 +96,11 @@ void TFT_DrawPixel(uint16_t x, uint16_t y, uint16_t color) {
     uint8_t hi = color >> 8;
     uint8_t lo = color & 0xFF;
 
-    TFT_WriteCommand(0x2A); // Column addr set
+    TFT_WriteCommand(0x2A); // Column address set
     uint8_t data_col[] = {0x00, x, 0x00, x};
     TFT_WriteData(data_col, sizeof(data_col));
 
-    TFT_WriteCommand(0x2B); // Row addr set
+    TFT_WriteCommand(0x2B); // Row address set
     uint8_t data_row[] = {0x00, y, 0x00, y};
     TFT_WriteData(data_row, sizeof(data_row));
 
@@ -237,15 +237,15 @@ static void TFT_WriteData16(uint16_t data)
 void TFT_DrawDestilleryScreen(void) {
     TFT_FillScreen(BLACK);
 
-    // Rysujemy uproszczoną destylarnię:
-    // Kolumna
-    TFT_DrawRect(50, 20, 30, 90, WHITE); // główna kolumna
-    // Zbiornik
-    TFT_DrawRect(40, 110, 50, 30, WHITE); // zbiornik zacieru
-    // Wężownica
-    TFT_DrawCircle(65, 10, 5, WHITE); // odbiór na górze
+    // Draw a simplified distillery:
+    // Column
+    TFT_DrawRect(50, 20, 30, 90, WHITE); // main column
+    // Tank
+    TFT_DrawRect(40, 110, 50, 30, WHITE); // mash tank
+    // Coil
+    TFT_DrawCircle(65, 10, 5, WHITE); // cooler on top
 
-    // Podpisy
+    // Signatures
     TFT_DrawString(5, 20, "Top", WHITE, BLACK);
     TFT_DrawString(5, 60, "Middle", WHITE, BLACK);
     TFT_DrawString(5, 120, "Bottom", WHITE, BLACK);
@@ -256,7 +256,7 @@ void TFT_DrawDestilleryScreen(void) {
 void TFT_UpdateValues(float temp_bottom, float temp_middle, float temp_top, uint8_t heater_power) {
     char buffer[10];
 
-    // Temperatury
+    // temperature
     snprintf(buffer, sizeof(buffer), "%.1fC", temp_top);
     TFT_DrawString(90, 20, buffer, CYAN, BLACK);
 
@@ -266,10 +266,10 @@ void TFT_UpdateValues(float temp_bottom, float temp_middle, float temp_top, uint
     snprintf(buffer, sizeof(buffer), "%.1fC", temp_bottom);
     TFT_DrawString(90, 120, buffer, CYAN, BLACK);
 
-    // Grzałka
+    // Heater
     snprintf(buffer, sizeof(buffer), "%d%%", heater_power);
     TFT_DrawString(70, 150, buffer, YELLOW, BLACK);
 
-    // Opcjonalnie: prosty pasek mocy grzałki
-    TFT_FillRect(70, 140, heater_power/2, 5, GREEN); // (maks. pasek 50px przy 100%)
+    // simple heater power strip
+    TFT_FillRect(70, 140, heater_power/2, 5, GREEN); // (max. strip 50px for 100%)
 }
