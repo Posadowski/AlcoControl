@@ -1,0 +1,15 @@
+../Core/Src/display_tft.c:29:17:RGBtoBGR	24	static
+../Core/Src/display_tft.c:38:6:TFT_Init	16	static
+../Core/Src/display_tft.c:68:6:TFT_FillScreen	32	static
+../Core/Src/display_tft.c:93:6:TFT_DrawPixel	32	static
+../Core/Src/display_tft.c:113:6:TFT_DrawChar	32	static
+../Core/Src/display_tft.c:129:6:TFT_DrawString	40	static
+../Core/Src/display_tft.c:140:6:TFT_FillRect	32	static
+../Core/Src/display_tft.c:166:6:TFT_DrawRect	32	static
+../Core/Src/display_tft.c:173:6:TFT_DrawCircle	40	static
+../Core/Src/display_tft.c:207:13:TFT_WriteCommand	16	static
+../Core/Src/display_tft.c:214:13:TFT_WriteData	16	static
+../Core/Src/display_tft.c:221:13:TFT_WriteDataByte	16	static
+../Core/Src/display_tft.c:225:13:TFT_WriteData16	24	static
+../Core/Src/display_tft.c:237:6:TFT_DrawDestilleryScreen	16	static
+../Core/Src/display_tft.c:256:6:TFT_UpdateValues	48	static
