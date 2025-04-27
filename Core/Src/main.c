@@ -21,11 +21,16 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdint.h>
+#include <string.h>
 #include "display_tft.h"
+#include "ds18b20.h"
+#include "onewire.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+
 
 /* USER CODE END PTD */
 
@@ -42,9 +47,22 @@
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
 
+TIM_HandleTypeDef htim1;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+
+uint8_t sensor_bottom[8];
+uint8_t sensor_middle[8];
+uint8_t sensor_top[8];
+
+float temp_bottom = -1000;
+float temp_middle = -1000;
+float temp_top = -1000;
+
+
+uint8_t sensors_found = 0;
 
 /* USER CODE END PV */
 
@@ -53,12 +71,62 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI1_Init(void);
+static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void Sensors_Init(void)
+{
+
+    DS18B20_Init(DS18B20_Resolution_12bits);
+    sensors_found = DS18B20_Quantity();
+
+    switch(sensors_found){
+    case 1:
+    	DS18B20_GetROM(0,sensor_bottom);
+    	break;
+    case 2:
+    	DS18B20_GetROM(0,sensor_bottom);
+    	DS18B20_GetROM(1,sensor_middle);
+    	break;
+    case 3:
+    	DS18B20_GetROM(0,sensor_bottom);
+		DS18B20_GetROM(1,sensor_middle);
+		DS18B20_GetROM(2,sensor_top);
+		break;
+    }
+
+
+
+}
+
+void Sensors_ReadTemperatures(void)
+{
+	DS18B20_ReadAll();
+	DS18B20_StartAll();
+
+
+    if (sensors_found >= 1) {
+    	DS18B20_GetTemperature(0, &temp_bottom);
+    } else {
+        temp_bottom = -1000;
+    }
+
+    if (sensors_found >= 2) {
+    	DS18B20_GetTemperature(1, &temp_middle);
+    } else {
+        temp_middle = -1000;
+    }
+
+    if (sensors_found >= 3) {
+    	DS18B20_GetTemperature(2, &temp_top);
+    } else {
+        temp_top = -1000;
+    }
+}
 
 /* USER CODE END 0 */
 
@@ -93,6 +161,7 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_SPI1_Init();
+  MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 	TFT_Init(&hspi1);
 	TFT_FillScreen(BLACK);
@@ -102,10 +171,12 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	float temp_bottom = 78.5, temp_middle = 0.0, temp_top = 25.9 ;
+	Sensors_Init();
+
 	uint8_t heater_power = 50;
 	TFT_DrawDestilleryScreen();
 	while (1) {
+		Sensors_ReadTemperatures();
 		TFT_UpdateValues(temp_bottom, temp_middle, temp_top, heater_power);
 		HAL_Delay(500);
     /* USER CODE END WHILE */
@@ -200,6 +271,59 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_SlaveConfigTypeDef sSlaveConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 83;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 65535;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_RESET;
+  sSlaveConfig.InputTrigger = TIM_TS_ITR0;
+  if (HAL_TIM_SlaveConfigSynchro(&htim1, &sSlaveConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -253,6 +377,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(DS18B20_GPIO_Port, DS18B20_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
@@ -265,6 +392,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : DS18B20_Pin */
+  GPIO_InitStruct.Pin = DS18B20_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(DS18B20_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

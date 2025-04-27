@@ -257,15 +257,25 @@ void TFT_UpdateValues(float temp_bottom, float temp_middle, float temp_top, uint
     char buffer[10];
 
     // temperature
-    snprintf(buffer, sizeof(buffer), "%.1fC", temp_top);
-    TFT_DrawString(90, 20, buffer, CYAN, BLACK);
+    if (temp_top > -100) {
+		snprintf(buffer, sizeof(buffer), "%.1fC", temp_top);
+		TFT_DrawString(90, 20, buffer, CYAN, BLACK);
+    } else {
+    	TFT_DrawString(90, 20, "N/A", RED, BLACK);
+    }
 
-    snprintf(buffer, sizeof(buffer), "%.1fC", temp_middle);
-    TFT_DrawString(90, 60, buffer, CYAN, BLACK);
-
-    snprintf(buffer, sizeof(buffer), "%.1fC", temp_bottom);
-    TFT_DrawString(90, 120, buffer, CYAN, BLACK);
-
+    if (temp_middle > -100) {
+		snprintf(buffer, sizeof(buffer), "%.1fC", temp_middle);
+		TFT_DrawString(90, 60, buffer, CYAN, BLACK);
+    } else {
+		TFT_DrawString(90, 60, "N/A", RED, BLACK);
+    }
+    if(temp_bottom > -100){
+    	snprintf(buffer, sizeof(buffer), "%.1fC", temp_bottom);
+    	TFT_DrawString(90, 120, buffer, CYAN, BLACK);
+    } else {
+		TFT_DrawString(90, 120, "N/A", RED, BLACK);
+    }
     // Heater
     snprintf(buffer, sizeof(buffer), "%d%%", heater_power);
     TFT_DrawString(70, 150, buffer, YELLOW, BLACK);
