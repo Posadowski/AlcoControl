@@ -253,7 +253,7 @@ void TFT_DrawDestilleryScreen(void) {
     TFT_DrawString(5, 150, "Heater:", WHITE, BLACK);
 }
 
-void TFT_UpdateValues(float temp_bottom, float temp_middle, float temp_top, uint8_t heater_power) {
+void TFT_UpdateValues(float temp_bottom, float temp_middle, float temp_top, float heater_power) {
     char buffer[10];
 
     // temperature
@@ -277,9 +277,11 @@ void TFT_UpdateValues(float temp_bottom, float temp_middle, float temp_top, uint
 		TFT_DrawString(90, 120, "N/A", RED, BLACK);
     }
     // Heater
-    snprintf(buffer, sizeof(buffer), "%d%%", heater_power);
+    TFT_FillRect(70, 150, 50, 10, BLACK); // clear screen only on power string position
+    snprintf(buffer, sizeof(buffer), "%0.1f%%", heater_power);
     TFT_DrawString(70, 150, buffer, YELLOW, BLACK);
 
     // simple heater power strip
-    TFT_FillRect(70, 140, heater_power/2, 5, GREEN); // (max. strip 50px for 100%)
+    TFT_FillRect(70, 142, 50, 5, BLACK); // clear screen on power strip position
+    TFT_FillRect(70, 142, heater_power/2, 5, GREEN); // (max. strip 50px for 100%)
 }
