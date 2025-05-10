@@ -26,6 +26,7 @@
 #include "display_tft.h"
 #include "ds18b20.h"
 #include "onewire.h"
+#include "pid.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -166,19 +167,22 @@ int main(void)
 	TFT_Init(&hspi1);
 	TFT_FillScreen(BLACK);
 	TFT_DrawString(10, 10, "Hello AlcoControl!", RED, BLACK);
-
+	PID_t heater_pid;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	Sensors_Init();
-
-	uint8_t heater_power = 50;
+	float dt = 1.0f;
+	PID_Init(&heater_pid, 50.0f, 1.0f, 1.0f, 0.0f, 100.0f); // Kp, Ki, Kd, min=0%, max=100%
+	heater_pid.setpoint = 30.5f;
+	float heater_power = 0;
 	TFT_DrawDestilleryScreen();
 	while (1) {
 		Sensors_ReadTemperatures();
+		heater_power = PID_Compute(&heater_pid, temp_top, dt);
 		TFT_UpdateValues(temp_bottom, temp_middle, temp_top, heater_power);
-		HAL_Delay(500);
+		HAL_Delay(1000);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
