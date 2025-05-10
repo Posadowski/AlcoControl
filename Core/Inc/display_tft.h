@@ -14,7 +14,7 @@ void TFT_DrawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 void TFT_FillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
 void TFT_DrawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color);
 
-void TFT_UpdateValues(float temp_bottom, float temp_middle, float temp_top, uint8_t heater_power);
+void TFT_UpdateValues(float temp_bottom, float temp_middle, float temp_top, float heater_power);
 void TFT_DrawDestilleryScreen(void);
 
 // === Color definitions ===
