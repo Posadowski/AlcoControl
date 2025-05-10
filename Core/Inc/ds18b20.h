@@ -1,3 +1,13 @@
+/*
+ * ds18b20.h
+ *
+ *	The MIT License.
+ *  Created on: 20.09.2018
+ *      Author: Mateusz Salamon
+ *      www.msalamon.pl
+ *      mateusz@msalamon.pl
+ *
+ */
 #ifndef INC_DS18B20_H_
 #define INC_DS18B20_H_
 

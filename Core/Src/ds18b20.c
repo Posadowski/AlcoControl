@@ -1,3 +1,14 @@
+/*
+ * ds18b20.c
+ *
+ *	The MIT License.
+ *  Created on: 20.09.2018
+ *      Author: Mateusz Salamon
+ *      www.msalamon.pl
+ *      mateusz@msalamon.pl
+ *
+ */
+
 #include "ds18b20.h"
 #include "stm32f4xx_hal.h"
 #include "main.h"
