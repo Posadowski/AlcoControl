@@ -61,6 +61,7 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define B1_Pin GPIO_PIN_13
 #define B1_GPIO_Port GPIOC
+#define B1_EXTI_IRQn EXTI15_10_IRQn
 #define USART_TX_Pin GPIO_PIN_2
 #define USART_TX_GPIO_Port GPIOA
 #define USART_RX_Pin GPIO_PIN_3
@@ -70,6 +71,8 @@ void Error_Handler(void);
 #define ZERO_CROSS_DETECT_Pin GPIO_PIN_8
 #define ZERO_CROSS_DETECT_GPIO_Port GPIOA
 #define ZERO_CROSS_DETECT_EXTI_IRQn EXTI9_5_IRQn
+#define ESP8266_RST_Pin GPIO_PIN_10
+#define ESP8266_RST_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
@@ -78,6 +81,8 @@ void Error_Handler(void);
 #define SWO_GPIO_Port GPIOB
 #define TRAIC_PWM_GPIO_Pin GPIO_PIN_4
 #define TRAIC_PWM_GPIO_GPIO_Port GPIOB
+#define ESP8266_GPIO0_Pin GPIO_PIN_5
+#define ESP8266_GPIO0_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

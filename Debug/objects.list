@@ -1,3 +1,4 @@
+"./Core/Src/ESP8266_HAL.o"
 "./Core/Src/display_tft.o"
 "./Core/Src/ds18b20.o"
 "./Core/Src/main.o"
