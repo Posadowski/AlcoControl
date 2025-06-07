@@ -111,6 +111,7 @@ int Get_after(const char *string, uint8_t length, char *result, UART_HandleTypeD
         HAL_Delay(10);
     }
     return -1; // TIMEOUT
+}
 
 int Look_for(const char *str, const char *buffertolookinto)
 {
@@ -229,7 +230,9 @@ void Server_Start(void)
     char Link_ID_str[2] = {0}; // 1 char + null
 
     // Read Link_ID from response +IPD,x,...
-    while (Get_after("+IPD,", 1, Link_ID_str, wifi_uart) == -1);
+    if (Get_after("+IPD,", 1, Link_ID_str, wifi_uart) == -1){
+    	return;
+    }
 
     // Convert digit sign to int Link_ID
     char Link_ID = Link_ID_str[0] - '0';
@@ -237,7 +240,9 @@ void Server_Start(void)
     Uart_sendstring("client get\n", pc_uart);
 
     // Get HTTP request to buffer
-    while (Copy_upto(" HTTP/1.1", buftocopyinto, wifi_uart) != 1);
+    if(Copy_upto(" HTTP/1.1", buftocopyinto, wifi_uart) != 1){
+    	return;
+    }
 
     if (Look_for("/ledon", buftocopyinto) == 1)
     {
