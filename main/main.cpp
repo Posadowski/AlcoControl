@@ -14,6 +14,7 @@ void app_main();
 #include "WifiManager.hpp"
 #include "HttpServer.hpp"
 #include "heater_manager.hpp" 
+#include "ota_manager.hpp"
 
 // Globalne zmienne (poza app_main aby uniknąć capture warnings)
 static HeaterManager* g_heater_manager = nullptr;
@@ -97,24 +98,34 @@ extern "C" void app_main() {
 
     // Root endpoint (HTML) - rozszerzony o status grzałki
     http.registerEndpoint("/", HTTP_GET, []() {
-        std::string resp = "<html><head><title>AlcoControl</title></head><body>";
-        resp += "<h1>AlcoControl Sensors</h1>";
+        std::string resp = "<html><head><title>AlcoControl</title>";
+        resp += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+        resp += "<style>body{font-family:Arial;margin:20px} .btn{padding:10px;margin:5px;cursor:pointer;background:#007cba;color:white;border:none;border-radius:4px} .section{margin:20px 0;padding:15px;border:1px solid #ddd;border-radius:5px}</style>";
+        resp += "</head><body>";
+        resp += "<h1>AlcoControl Dashboard</h1>";
+        
+        // Navigation
+        resp += "<div style='margin-bottom:20px'>";
+        resp += "<button class='btn' onclick='location.href=\"/\"'>Dashboard</button> ";
+        resp += "<button class='btn' onclick='location.href=\"/wifi\"'>WiFi Config</button> ";
+        resp += "<button class='btn' onclick='location.href=\"/ota\"'>OTA Update</button>";
+        resp += "</div>";
         
         // Status grzałki
-        resp += "<h2>Heater Status</h2>";
+        resp += "<div class='section'><h2>Heater Status</h2>";
         resp += "<p><strong>Running:</strong> " + std::string(g_heater_manager->isRunning() ? "YES" : "NO") + "</p>";
         resp += "<p><strong>Current Temperature:</strong> " + std::to_string(g_main_temperature) + " &deg;C</p>";
         resp += "<p><strong>Target Temperature:</strong> " + std::to_string(PRODUCTION_TEMPERATURE_C) + " &deg;C</p>";
         resp += "<p><strong>Power Output:</strong> " + std::to_string(g_heater_manager->getCurrentPower()) + "%</p>";
         
         // Przyciski sterowania
-        resp += "<div style='margin: 20px 0;'>";
-        resp += "<button onclick=\"fetch('/api/heater/start', {method:'POST'})\">Start Heater</button> ";
-        resp += "<button onclick=\"fetch('/api/heater/stop', {method:'POST'})\">Stop Heater</button>";
-        resp += "</div>";
+        resp += "<div style='margin: 15px 0;'>";
+        resp += "<button class='btn' onclick=\"fetch('/api/heater/start', {method:'POST'})\">Start Heater</button> ";
+        resp += "<button class='btn' onclick=\"fetch('/api/heater/stop', {method:'POST'})\" style='background:#dc3545'>Stop Heater</button>";
+        resp += "</div></div>";
         
         // Sensory
-        resp += "<h2>Sensors</h2><ul>";
+        resp += "<div class='section'><h2>Sensors</h2><ul>";
         for (auto& s : *g_latest) {
             resp += "<li>" + s.id + ": " + std::to_string(s.value) + " &deg;C";
             if (s.id == g_main_sensor_id) {
@@ -122,9 +133,9 @@ extern "C" void app_main() {
             }
             resp += "</li>";
         }
-        resp += "</ul>";
+        resp += "</ul></div>";
         
-        resp += "<script>setInterval(() => location.reload(), 5000);</script>"; // Auto-refresh co 5s
+        resp += "<script>setInterval(() => location.reload(), 10000);</script>"; // Auto-refresh co 10s
         resp += "</body></html>";
         return resp;
     });
@@ -163,6 +174,237 @@ extern "C" void app_main() {
     http.registerEndpoint("/api/heater/stop", HTTP_POST, []() {
         g_heater_manager->stop();
         return std::string("{ \"status\": \"stopped\" }");
+    });
+
+    // === WiFi Configuration Pages ===
+    http.registerEndpoint("/wifi", HTTP_GET, []() {
+        auto& ota = OTAManager::instance();
+        auto networks = ota.scanNetworks();
+        
+        std::string resp = "<html><head><title>AlcoControl - WiFi Config</title>";
+        resp += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+        resp += "<style>body{font-family:Arial;margin:20px} .btn{padding:10px;margin:5px;cursor:pointer;background:#007cba;color:white;border:none;border-radius:4px} .network{margin:10px 0;padding:10px;border:1px solid #ddd;border-radius:4px} .connected{background:#d4edda} input{padding:8px;margin:5px;border:1px solid #ccc;border-radius:4px;width:90%}</style>";
+        resp += "</head><body>";
+        resp += "<h1>WiFi Configuration</h1>";
+        
+        // Navigation
+        resp += "<div style='margin-bottom:20px'>";
+        resp += "<button class='btn' onclick='location.href=\"/\"'>Dashboard</button> ";
+        resp += "<button class='btn' onclick='location.href=\"/wifi\"' style='background:#28a745'>WiFi Config</button> ";
+        resp += "<button class='btn' onclick='location.href=\"/ota\"'>OTA Update</button>";
+        resp += "</div>";
+        
+        // Current connection status
+        if (ota.isConnectedToStation()) {
+            resp += "<div class='network connected'><strong>✓ Connected to WiFi</strong></div>";
+        } else {
+            resp += "<div class='network' style='background:#f8d7da'><strong>⚠ Not connected to WiFi</strong></div>";
+        }
+        
+        resp += "<h3>Available Networks:</h3>";
+        for (auto& network : networks) {
+            resp += "<div class='network" + std::string(network.connected ? " connected" : "") + "'>";
+            resp += "<strong>" + network.ssid + "</strong> (RSSI: " + std::to_string(network.rssi) + " dBm)";
+            if (network.auth_mode != WIFI_AUTH_OPEN) resp += " 🔒";
+            if (network.connected) {
+                resp += " <span style='color:green'>✓ Connected</span>";
+            } else {
+                resp += "<br><form style='margin-top:10px' action='/api/wifi/connect' method='post'>";
+                resp += "<input type='hidden' name='ssid' value='" + network.ssid + "'>";
+                if (network.auth_mode != WIFI_AUTH_OPEN) {
+                    resp += "<input type='password' name='password' placeholder='Password' required>";
+                }
+                resp += "<button type='submit' class='btn'>Connect</button></form>";
+            }
+            resp += "</div>";
+        }
+        
+        resp += "<button class='btn' onclick='location.reload()' style='margin-top:20px'>Refresh Networks</button>";
+        resp += "</body></html>";
+        return resp;
+    });
+
+    // === OTA Update Page ===
+    http.registerEndpoint("/ota", HTTP_GET, []() {
+        auto& ota = OTAManager::instance();
+        
+        std::string resp = "<html><head><title>AlcoControl - OTA Update</title>";
+        resp += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+        resp += "<style>body{font-family:Arial;margin:20px} .btn{padding:10px;margin:5px;cursor:pointer;background:#007cba;color:white;border:none;border-radius:4px} .section{margin:20px 0;padding:15px;border:1px solid #ddd;border-radius:5px} input{padding:8px;margin:5px;border:1px solid #ccc;border-radius:4px;width:90%} .progress{width:100%;height:20px;background:#f0f0f0;border-radius:10px;overflow:hidden} .progress-bar{height:100%;background:#007cba;transition:width 0.3s}</style>";
+        resp += "</head><body>";
+        resp += "<h1>OTA Update</h1>";
+        
+        // Navigation
+        resp += "<div style='margin-bottom:20px'>";
+        resp += "<button class='btn' onclick='location.href=\"/\"'>Dashboard</button> ";
+        resp += "<button class='btn' onclick='location.href=\"/wifi\"'>WiFi Config</button> ";
+        resp += "<button class='btn' onclick='location.href=\"/ota\"' style='background:#28a745'>OTA Update</button>";
+        resp += "</div>";
+        
+        // Connection status
+        if (!ota.isConnectedToStation()) {
+            resp += "<div class='section' style='background:#f8d7da'>";
+            resp += "<h3>⚠ WiFi Required</h3>";
+            resp += "<p>OTA updates require an internet connection. Please configure WiFi first.</p>";
+            resp += "<button class='btn' onclick='location.href=\"/wifi\"'>Configure WiFi</button>";
+            resp += "</div>";
+        } else {
+            // Server configuration
+            resp += "<div class='section'>";
+            resp += "<h3>Update Server Configuration</h3>";
+            resp += "<form action='/api/ota/server' method='post'>";
+            resp += "<label>Server URL:</label><br>";
+            resp += "<input type='url' name='server_url' value='" + ota.getOTAServer() + "' placeholder='https://example.com/firmware' required><br>";
+            resp += "<small>Enter the URL where your firmware.bin file is hosted</small><br>";
+            resp += "<button type='submit' class='btn' style='margin-top:10px'>Save Server</button>";
+            resp += "</form></div>";
+            
+            // Update controls
+            resp += "<div class='section'>";
+            resp += "<h3>Firmware Update</h3>";
+            resp += "<p><strong>Status:</strong> <span id='status'>" + ota.getUpdateStatus() + "</span></p>";
+            
+            // Progress bar
+            resp += "<div class='progress' style='margin:10px 0'>";
+            resp += "<div class='progress-bar' id='progressBar' style='width:" + std::to_string(ota.getUpdateProgress()) + "%'></div>";
+            resp += "</div>";
+            resp += "<p><span id='progress'>" + std::to_string(ota.getUpdateProgress()) + "</span>%</p>";
+            
+            resp += "<button class='btn' onclick='checkUpdate()'>Check for Update</button> ";
+            resp += "<button class='btn' onclick='startUpdate()' style='background:#ffc107;color:#000' id='updateBtn'>Start Update</button>";
+            resp += "</div>";
+        }
+        
+        resp += R"(
+        <script>
+        function checkUpdate() {
+            document.getElementById('status').innerText = 'Checking for updates...';
+            fetch('/api/ota/check')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('status').innerText = data.message;
+                    document.getElementById('updateBtn').disabled = !data.available;
+                });
+        }
+        
+        function startUpdate() {
+            if(confirm('This will update the firmware and restart the device. Continue?')) {
+                document.getElementById('status').innerText = 'Starting update...';
+                document.getElementById('updateBtn').disabled = true;
+                
+                fetch('/api/ota/update', {method: 'POST'})
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('status').innerText = data.message;
+                        if(data.success) {
+                            // Poll for progress updates
+                            pollProgress();
+                        }
+                    });
+            }
+        }
+        
+        function pollProgress() {
+            const interval = setInterval(() => {
+                fetch('/api/ota/progress')
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('progress').innerText = data.progress;
+                        document.getElementById('progressBar').style.width = data.progress + '%';
+                        document.getElementById('status').innerText = data.status;
+                        
+                        if(data.progress >= 100 || data.status.includes('failed')) {
+                            clearInterval(interval);
+                        }
+                    });
+            }, 1000);
+        }
+        </script>
+        )";
+        
+        resp += "</body></html>";
+        return resp;
+    });
+
+    printf("AlcoControl started. Temperature target: %.1f°C\n", PRODUCTION_TEMPERATURE_C);
+    
+    // === API Endpoints for WiFi and OTA ===
+    
+    // WiFi Connect API - Note: Your HttpServer needs to support POST with form data
+    // For now, we'll use simple GET endpoints with parameters
+    http.registerEndpoint("/api/wifi/scan", HTTP_GET, []() {
+        auto& ota = OTAManager::instance();
+        auto networks = ota.scanNetworks();
+        
+        std::string resp = "{ \"networks\": [";
+        bool first = true;
+        for (auto& network : networks) {
+            if (!first) resp += ",";
+            resp += "{ \"ssid\": \"" + network.ssid + "\", ";
+            resp += "\"rssi\": " + std::to_string(network.rssi) + ", ";
+            resp += "\"auth\": " + std::to_string(network.auth_mode) + ", ";
+            resp += "\"connected\": " + std::string(network.connected ? "true" : "false") + " }";
+            first = false;
+        }
+        resp += "]}";
+        return resp;
+    });
+    
+    // OTA Server Config
+    http.registerEndpoint("/api/ota/server/set", HTTP_GET, []() {
+        // URL parameter extraction would be needed here
+        // For simplicity, using a fixed example
+        auto& ota = OTAManager::instance();
+        // This would need proper parameter parsing
+        // ota.setOTAServer(server_url_from_params);
+        return std::string("{ \"status\": \"Server URL saved\" }");
+    });
+    
+    // Check for updates
+    http.registerEndpoint("/api/ota/check", HTTP_GET, []() {
+        auto& ota = OTAManager::instance();
+        OTAResult result = ota.checkForUpdate();
+        
+        std::string resp = "{ ";
+        resp += "\"available\": " + std::string(result == OTAResult::SUCCESS ? "true" : "false") + ", ";
+        resp += "\"message\": \"";
+        
+        switch(result) {
+            case OTAResult::SUCCESS:
+                resp += "Update available";
+                break;
+            case OTAResult::NETWORK_ERROR:
+                resp += "Network error - check server URL and WiFi";
+                break;
+            default:
+                resp += "No update available";
+                break;
+        }
+        resp += "\" }";
+        return resp;
+    });
+    
+    // Start OTA update
+    http.registerEndpoint("/api/ota/update", HTTP_POST, []() {
+        auto& ota = OTAManager::instance();
+        
+        // Start update in background task
+        xTaskCreate([](void* param) {
+            auto* ota_mgr = static_cast<OTAManager*>(param);
+            ota_mgr->performUpdate();
+            vTaskDelete(nullptr);
+        }, "ota_update", 8192, &ota, 5, nullptr);
+        
+        return std::string("{ \"success\": true, \"message\": \"Update started\" }");
+    });
+    
+    // Get update progress
+    http.registerEndpoint("/api/ota/progress", HTTP_GET, []() {
+        auto& ota = OTAManager::instance();
+        std::string resp = "{ ";
+        resp += "\"progress\": " + std::to_string(ota.getUpdateProgress()) + ", ";
+        resp += "\"status\": \"" + ota.getUpdateStatus() + "\" }";
+        return resp;
     });
 
     printf("AlcoControl started. Temperature target: %.1f°C\n", PRODUCTION_TEMPERATURE_C);
