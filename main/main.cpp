@@ -354,7 +354,9 @@ extern "C" void app_main() {
     http.registerEndpoint("/api/ota/server/set", HTTP_GET, []() {
         // URL parameter extraction would be needed here
         // For simplicity, using a fixed example
-        auto& ota = OTAManager::instance();
+        
+        //auto& ota = OTAManager::instance();
+
         // This would need proper parameter parsing
         // ota.setOTAServer(server_url_from_params);
         return std::string("{ \"status\": \"Server URL saved\" }");
