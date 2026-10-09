@@ -49,4 +49,3 @@ jobs:
         with:
           name: junit-results
           path: test_apps/unit/results.xml
-          
