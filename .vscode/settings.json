@@ -9,8 +9,6 @@
   "idf.portWin": "COM3",
   "idf.toolsPathWin": "C:\\Users\\mateu\\.espressif",
   "idf.customExtraVars": {
-    "OPENOCD_SCRIPTS": "/home/mposa/.espressif/tools/openocd-esp32/v0.12.0-esp32-20240318/openocd-esp32/share/openocd/scripts",
-    "ESP_ROM_ELF_DIR": "/home/mposa/.espressif/tools/esp-rom-elfs/20240305/",
     "IDF_TARGET": "esp32"
   },
   "clangd.path": "C:\\Espressif\\tools\\esp-clangd\\esp-21.1.3_20260408\\esp-clangd\\bin\\clangd.exe",
