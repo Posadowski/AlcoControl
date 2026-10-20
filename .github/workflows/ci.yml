@@ -4,7 +4,7 @@ on:
   push:
     branches: [master]
   pull_request:
-
+  workflow_dispatch:
 jobs:
   firmware-build:
     name: Build firmware (checks the partition size)
