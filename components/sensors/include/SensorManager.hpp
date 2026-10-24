@@ -23,10 +23,11 @@ public:
     ~SensorManager();
 
     void add(std::unique_ptr<ISensor> sensor);
-    void start();   // create task and start pooling
-    void stop();    // stop task
+    void start();   // create task and start polling
+    void stop();    // stop task (safe to call from a subscriber callback)
 
-    const std::vector<std::unique_ptr<ISensor>>& getSensors() const { return sensors_; }
+    // Snapshot of the sensor list; safe to use concurrently with add().
+    std::vector<std::shared_ptr<ISensor>> getSensors() const;
 
     // ISubscription
     void subscribe(SensorCallback cb) override;
@@ -36,9 +37,9 @@ private:
     static void taskEntry(void* arg);
     void loop();
 
-    std::vector<std::unique_ptr<ISensor>> sensors_;
+    std::vector<std::shared_ptr<ISensor>> sensors_;   // append-only
     std::vector<SensorCallback> subscribers_;
-    std::mutex mtx_;
+    mutable std::mutex mtx_;                          // protects both vectors
 
     TaskHandle_t task_{nullptr};
     const char* taskName_;
@@ -46,9 +47,9 @@ private:
     uint32_t stack_;
     UBaseType_t prio_;
     std::atomic<bool> running_{false};
+    std::atomic<bool> selfStopped_{false};            // stop() called from the task itself
     SemaphoreHandle_t doneSem_{nullptr};
-    size_t initCount_{0};          // How many sensors have already been initialized
-
+    size_t initCount_{0};                             // touched only by the task
 };
 
 } // namespace
