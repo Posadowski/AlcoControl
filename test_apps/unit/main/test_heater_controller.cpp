@@ -200,3 +200,13 @@ TEST_CASE("Heater: temperature is tracked while stopped, without faults", "[heat
     TEST_ASSERT_EQUAL_FLOAT(33.0f, r.c.temperature());
     ASSERT_FAULT(Fault::None, r);
 }
+
+TEST_CASE("Heater: invalid PID tunings are rejected", "[heater]")
+{
+    Rig r;
+    TEST_ASSERT_FALSE(r.c.setTunings(NAN, 0.0f, 0.0f));
+    TEST_ASSERT_FALSE(r.c.setTunings(-1.0f, 0.0f, 0.0f));
+    float kp = 0, ki = 0, kd = 0;
+    r.c.getTunings(kp, ki, kd);
+    TEST_ASSERT_EQUAL_FLOAT(2.0f, kp);
+}
