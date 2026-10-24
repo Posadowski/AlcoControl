@@ -2,12 +2,14 @@
 #include <vector>
 #include <memory>
 #include <mutex>
+#include <atomic>
 #include "ISensor.hpp"
 #include "ISubscription.hpp"
 
 extern "C" {
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 }
 
 namespace alco::core {
@@ -43,7 +45,10 @@ private:
     uint32_t periodMs_;
     uint32_t stack_;
     UBaseType_t prio_;
-    bool running_{false};
+    std::atomic<bool> running_{false};
+    SemaphoreHandle_t doneSem_{nullptr};
+    size_t initCount_{0};          // How many sensors have already been initialized
+
 };
 
 } // namespace
