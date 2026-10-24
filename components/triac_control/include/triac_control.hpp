@@ -1,19 +1,23 @@
 #pragma once
+#include <atomic>
+#include <cstdint>
 #include "driver/gpio.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "heater_hw.hpp"
 
-#define TRIAC_PIN GPIO_NUM_2  // Dostosuj do swojego układu
-#define AC_PERIOD_US 20000    // 50Hz = 20ms period
-#define AC_HALF_PERIOD_US 10000 // 10ms half period
+#define TRIAC_PIN GPIO_NUM_26   // CHECK: GPIO2 is a strapping pin, prefer another one
 
-class TriacController {
+class TriacController : public alco::heater::ITriac {
 public:
-    TriacController();
     void init();
-    void setPowerPercent(float power_percent); // 0-100%
-    void triggerAtDelay(uint32_t delay_us);
-    void turnOff();
-    
+    void fire() override;     // ISR-safe: wakes the gate task
+    void off() override;
+    void setFireDelayUs(uint32_t us) { fireDelayUs_ = us; }   // delay after the zero-cross edge
+
 private:
-    float current_power_percent;
-    uint32_t calculateDelayFromPower(float power_percent);
+    static void fireTask(void* arg);
+
+    TaskHandle_t task_{nullptr};
+    std::atomic<uint32_t> fireDelayUs_{300};
 };

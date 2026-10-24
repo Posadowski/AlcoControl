@@ -16,7 +16,6 @@ void app_main();
 #include "heater_manager.hpp" 
 #include "ota_manager.hpp"
 
-// Globalne zmienne (poza app_main aby uniknąć capture warnings)
 static HeaterManager* g_heater_manager = nullptr;
 static float g_main_temperature = 25.0f;
 static std::string g_main_sensor_id;
@@ -124,7 +123,7 @@ extern "C" void app_main() {
         resp += "<button class='btn' onclick=\"fetch('/api/heater/stop', {method:'POST'})\" style='background:#dc3545'>Stop Heater</button>";
         resp += "</div></div>";
         
-        // Sensory
+        // Sensors
         resp += "<div class='section'><h2>Sensors</h2><ul>";
         for (auto& s : *g_latest) {
             resp += "<li>" + s.id + ": " + std::to_string(s.value) + " &deg;C";

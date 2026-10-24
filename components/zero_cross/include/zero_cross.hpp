@@ -1,19 +1,22 @@
 #pragma once
+#include <atomic>
+#include <cstdint>
 #include "driver/gpio.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
+#include "esp_attr.h"
 
-#define ZERO_CROSS_PIN GPIO_NUM_4  // Dostosuj do swojego układu
+#define ZERO_CROSS_PIN GPIO_NUM_27   // CHECK: must not be the DS18B20 pin
 
 class ZeroCrossDetector {
 public:
-    ZeroCrossDetector();
-    void init();
-    bool waitForZeroCross(uint32_t timeout_ms = 10);
-    uint32_t getLastZeroCrossTime();
-    
+    using Callback = void (*)(void* arg);   // called from the GPIO ISR, once per half-cycle
+
+    void init(Callback cb, void* arg);
+    uint32_t lastCrossUs() const { return lastUs_; }
+
 private:
-    static void IRAM_ATTR zeroCrossISR(void* arg);
-    QueueHandle_t zero_cross_queue;
-    uint32_t last_zero_cross_time;
+    static void IRAM_ATTR isr(void* arg);
+
+    Callback cb_{nullptr};
+    void* cbArg_{nullptr};
+    std::atomic<uint32_t> lastUs_{0};
 };
