@@ -41,7 +41,7 @@ jobs:
           . $IDF_PATH/export.sh
           idf.py set-target esp32
           idf.py build
-          pytest --target esp32 --embedded-services idf,qemu --junitxml=results.xml
+          pytest pytest_unit.py --target esp32 --embedded-services idf,qemu --junitxml=results.xml
 
       - name: Tests Results
         if: always()
