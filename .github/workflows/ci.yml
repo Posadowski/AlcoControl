@@ -53,3 +53,34 @@ jobs:
         with:
           name: junit-results
           path: test_apps/unit/results.xml
+      - name: Test summary
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import os
+          import xml.etree.ElementTree as ET
+
+          path = "test_apps/unit/results.xml"
+          if not os.path.exists(path):
+              print("### Unit tests: no results.xml (the build or the run failed earlier)")
+              raise SystemExit
+
+          cases = list(ET.parse(path).getroot().iter("testcase"))
+          bad = [c for c in cases if any(ch.tag in ("failure", "error") for ch in c)]
+          skipped = [c for c in cases if any(ch.tag == "skipped" for ch in c)]
+          passed = len(cases) - len(bad) - len(skipped)
+          print(f"### Unit tests (QEMU): {passed} passed, {len(bad)} failed, {len(skipped)} skipped")
+
+          if bad:
+              print("")
+              print("| Test | Message |")
+              print("|---|---|")
+              for c in bad:
+                  msg = ""
+                  for ch in c:
+                      if ch.tag in ("failure", "error"):
+                          lines = (ch.attrib.get("message") or ch.text or "").strip().splitlines()
+                          msg = lines[0] if lines else ""
+                  print(f"| {c.attrib.get('name')} | {msg.replace('|', '/')} |")
+          EOF    
