@@ -12,6 +12,8 @@ jobs:
     container: espressif/idf:release-v6.1
     steps:
       - uses: actions/checkout@v4
+      - name: Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Build
         shell: bash
         run: |
@@ -21,10 +23,12 @@ jobs:
   unit-tests:
     name: Unit tests (QEMU)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     container: espressif/idf:release-v6.1
     steps:
       - uses: actions/checkout@v4
-
+      - name: Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: QEMU dependencies & pytest
         shell: bash
         run: |

@@ -147,6 +147,18 @@ TEST_CASE("PID: custom output limits", "[pid]")
     TEST_ASSERT_EQUAL_FLOAT(10.0f, pid.compute(100.0f, 1.0f));
 }
 
+TEST_CASE("PID: the integral keeps unwinding while the output sits at the lower limit", "[pid][integral]")
+{
+    PIDController pid(2.0f, 1.0f, 0.0f);
+    pid.setTarget(80.0f);
+    pid.compute(65.0f, 1.0f);                                       // error 15 -> I term = 15
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 15.0f, pid.integralTerm());
+
+    pid.setTarget(60.0f);                                           // now 20 C above the target
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, pid.compute(80.0f, 1.0f));        // P = -40, output clamped to 0
+    TEST_ASSERT_EQUAL_FLOAT(0.0f, pid.integralTerm());              // 15 - 20, clamped to 0
+}
+
 // ---------------- closed loop on a simulated boiler ----------------
 namespace {
 // First-order boiler with heat loss and optional dead time (heater -> sensor delay).
