@@ -3,3 +3,6 @@ managed_components/
 sdkconfig.old
 dependencies.lock
 .vscode/
+
+# generated from sdkconfig.defaults for the unit tests
+test_apps/unit/sdkconfig

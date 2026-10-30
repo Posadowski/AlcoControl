@@ -3,8 +3,8 @@
 // PI(D) controller for a heater: output is a power in percent (default 0..100).
 //  - the integral term is stored in OUTPUT units (ki is applied while integrating),
 //    so changing ki at run time does not make the output jump
-//  - anti-windup: the integral term is clamped to the output range and is frozen
-//    while the output is saturated in the direction the error pushes
+//  - Anti-windup: freeze only while saturated at the upper limit. At the lower limit
+//     the integral keeps unwinding
 //  - optional integral band: integrate only when |error| <= band.
 //    CAUTION: the band must be larger than (holding power / kp), otherwise the
 //    loop settles outside the band and the integral never engages. Off by default.

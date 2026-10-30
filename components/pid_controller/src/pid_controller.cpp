@@ -41,14 +41,13 @@ float PIDController::compute(float input, float dt) {
     const float d = kd_ * derivative;
 
     if (dtOk) {
-        const float outNow = p + iTerm_ + d;
-        const bool pushingUp   = error > 0.0f && outNow >= outMax_;
-        const bool pushingDown = error < 0.0f && outNow <= outMin_;
-        if (!pushingUp && !pushingDown && std::fabs(error) <= band_) {
+        // Anti-windup: freeze only while saturated at the upper limit. At the lower limit
+        // the integral keeps unwinding (a heater cannot cool; iTerm_ is bounded below).
+        const bool saturatedHigh = error > 0.0f && (p + iTerm_ + d) >= outMax_;
+        if (!saturatedHigh && std::fabs(error) <= band_) {
             iTerm_ = std::clamp(iTerm_ + ki_ * error * dt, outMin_, outMax_);
         }
     }
-
     lastInput_ = input;
     first_ = false;
 
