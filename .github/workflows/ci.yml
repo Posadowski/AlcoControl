@@ -46,7 +46,15 @@ jobs:
           idf.py set-target esp32
           idf.py build
           pytest pytest_unit.py --target esp32 --embedded-services idf,qemu --junitxml=results.xml
+
+      - name: Tests Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-results
+          path: test_apps/unit/results.xml
+      
       - name: Test summary
         if: always()
         continue-on-error: true      # a cosmetic step must never turn the run red
-        run: python3 .github/scripts/test_summary.py test_apps/unit/results.xml >> "$GITHUB_STEP_SUMMARY"
+        run: python3 .github/scripts/test_summary.py test_apps/unit/results.xml >> "$GITHUB_STEP_SUMMARY"    
