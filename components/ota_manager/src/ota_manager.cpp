@@ -57,26 +57,17 @@ std::vector<WiFiNetwork> OTAManager::scanNetworks() {
     std::vector<WiFiNetwork> networks;
     
     // Configure WiFi for scanning
-    wifi_scan_config_t scan_config = {
-        .ssid = nullptr,
-        .bssid = nullptr,
-        .channel = 0,
-        .show_hidden = false,
-        .scan_type = WIFI_SCAN_TYPE_ACTIVE,
-        .scan_time = {
-            .active = {
-                .min = 100, 
-                .max = 300
-            },
-            .passive = 100
-        },
-        .home_chan_dwell_time = 30,
-        .channel_bitmap = {
-            .ghz_2_channels = 0,
-            .ghz_5_channels = 0
-        },  
-        .coex_background_scan = true
-    };
+    wifi_scan_config_t scan_config = {};
+    scan_config.ssid = nullptr;
+    scan_config.bssid = nullptr;
+    scan_config.channel = 0;
+    scan_config.show_hidden = false;
+    scan_config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+    scan_config.scan_time.active.min = 100;
+    scan_config.scan_time.active.max = 300;
+    scan_config.scan_time.passive = 100;
+    scan_config.home_chan_dwell_time = 30;
+    scan_config.coex_background_scan = true;
     
     ESP_ERROR_CHECK(esp_wifi_scan_start(&scan_config, true));
     
