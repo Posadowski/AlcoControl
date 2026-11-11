@@ -1,21 +1,28 @@
 #pragma once
+#include "esp_err.h"
 #include "esp_http_server.h"
-#include <functional>
-#include <string>
-#include <map>
+#include "router.hpp"
 
+// Thin adapter between esp_http_server and alco::web::Router.
+// The server registers ONE wildcard handler per method and routes on its own, so the number of
+// routes is not limited by max_uri_handlers (the default is 8; the old code silently lost the
+// routes after the 8th one).
 class HttpServer {
 public:
     static HttpServer& instance();
 
-    void start();
+    alco::web::Router& router() { return router_; }
+
+    // Add the routes first, then call start().
+    esp_err_t start();
     void stop();
-    void registerEndpoint(const std::string& uri,
-                          httpd_method_t method,
-                          std::function<std::string()> handler);
-    std::map<std::string, std::function<std::string()>> handlers_;
-    
+    bool running() const { return server_ != nullptr; }
+
 private:
     HttpServer() = default;
-    httpd_handle_t server_ = nullptr;
+    static esp_err_t onRequest(httpd_req_t* req);
+    esp_err_t handle(httpd_req_t* req);
+
+    httpd_handle_t server_{nullptr};
+    alco::web::Router router_;
 };

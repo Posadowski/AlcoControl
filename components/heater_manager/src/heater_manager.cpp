@@ -35,9 +35,15 @@ void HeaterManager::init() {
     ESP_LOGI(TAG, "Heater manager initialized. Target: %.1f C", PRODUCTION_TEMPERATURE_C);
 }
 
-void HeaterManager::setTargetTemperature(float target) {
-    if (!controller.setTarget(target)) ESP_LOGE(TAG, "Rejected target %.1f C", target);
-}
+bool HeaterManager::setTargetTemperature(float target) {
+        if (!controller.setTarget(target)) {
+            ESP_LOGE(TAG, "Rejected target %.1f C", target);
+            return false;
+        }
+        return true;
+    }
+
+float HeaterManager::getTargetTemperature() { return controller.target(); }
 
 void HeaterManager::updateTemperature(float t) { controller.onTemperature(t, nowMs()); }
 void HeaterManager::start()                    { controller.start(nowMs()); }

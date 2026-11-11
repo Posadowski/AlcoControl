@@ -1,65 +1,112 @@
 #include "HttpServer.hpp"
 #include "esp_log.h"
+#include "http_util.hpp"
+
+using alco::web::Method;
+using alco::web::Request;
+using alco::web::Response;
 
 static const char* TAG = "HttpServer";
+static constexpr size_t kMaxBody = 2048;       // forms only; larger bodies are rejected
+static constexpr int kMaxRecvRetries = 3;
+
+static Method toMethod(int m) {
+    switch (m) {
+        case HTTP_GET:    return Method::Get;
+        case HTTP_POST:   return Method::Post;
+        case HTTP_PUT:    return Method::Put;
+        case HTTP_DELETE: return Method::Delete;
+        default:          return Method::Other;
+    }
+}
+
+static void sendResponse(httpd_req_t* req, const Response& res) {
+    // httpd keeps these pointers until the response is sent: a static status line and
+    // strings owned by `res` (which outlives this call) are safe.
+    httpd_resp_set_status(req, alco::web::statusLine(res.status));
+    httpd_resp_set_type(req, res.contentType.c_str());
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_set_hdr(req, "X-Content-Type-Options", "nosniff");
+    httpd_resp_send(req, res.body.data(), static_cast<ssize_t>(res.body.size()));
+}
 
 HttpServer& HttpServer::instance() {
     static HttpServer inst;
     return inst;
 }
 
-esp_err_t dispatch_handler(httpd_req_t* req) {
-    auto* server = &HttpServer::instance();
-    std::string uri(req->uri);
-
-    auto it = server->handlers_.find(uri);
-    if (it != server->handlers_.end()) {
-        std::string resp = it->second();
-        httpd_resp_send(req, resp.c_str(), resp.size());
-        return ESP_OK;
-    }
-    httpd_resp_send_404(req);
-    return ESP_FAIL;
+esp_err_t HttpServer::onRequest(httpd_req_t* req) {
+    return static_cast<HttpServer*>(req->user_ctx)->handle(req);
 }
 
-void HttpServer::start() {
-    if (server_) return;
+esp_err_t HttpServer::handle(httpd_req_t* req) {
+    Request r;
+    r.method = toMethod(req->method);
+    alco::web::splitTarget(req->uri, r.path, r.query);
+
+    if (req->content_len > kMaxBody) {
+        sendResponse(req, Response::error(413, "request body too large"));
+        return ESP_FAIL;                                   // close the connection, the body is unread
+    }
+    if (req->content_len > 0) {
+        r.body.resize(req->content_len);
+        size_t got = 0;
+        int retries = 0;
+        while (got < req->content_len) {
+            const int n = httpd_req_recv(req, &r.body[got], req->content_len - got);
+            if (n == HTTPD_SOCK_ERR_TIMEOUT) {
+                if (++retries > kMaxRecvRetries) {
+                    httpd_resp_send_err(req, HTTPD_408_REQ_TIMEOUT, nullptr);
+                    return ESP_FAIL;
+                }
+                continue;
+            }
+            if (n <= 0) return ESP_FAIL;
+            got += static_cast<size_t>(n);
+        }
+    }
+
+    r.params = alco::web::parseForm(r.query);
+    for (const auto& kv : alco::web::parseForm(r.body)) r.params[kv.first] = kv.second;
+
+    sendResponse(req, router_.dispatch(r));
+    return ESP_OK;
+}
+
+esp_err_t HttpServer::start() {
+    if (server_) return ESP_OK;
 
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-//     {
-//         .task_priority      = tskIDLE_PRIORITY+5,
-//         .stack_size         = 4096,           
-//         .core_id            = tskNO_AFFINITY,
-//         .task_caps          = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT,
-//         .max_req_hdr_len = CONFIG_HTTPD_MAX_REQ_HDR_LEN,
-//         .max_uri_len = CONFIG_HTTPD_MAX_URI_LEN,    
-//         .server_port        = 80,            
-//         .ctrl_port          = ESP_HTTPD_DEF_CTRL_PORT,
-//         .max_open_sockets   = 7,
-//         .max_uri_handlers   = 15,
-//         .max_resp_headers   = 15,
-//         .backlog_conn       = 5,
-//         .lru_purge_enable   = false,
-//         .recv_wait_timeout  = 5,
-//         .send_wait_timeout  = 5,
-//         .global_user_ctx = NULL,
-//         .global_user_ctx_free_fn = NULL,
-//         .global_transport_ctx = NULL,
-//         .global_transport_ctx_free_fn = NULL,
-//         .enable_so_linger = false,
-//         .linger_timeout = 0,
-//         .keep_alive_enable = false,
-//         .keep_alive_idle = 0,
-//         .keep_alive_interval = 0,
-//         .keep_alive_count = 0,
-//         .open_fn = NULL,
-//         .close_fn = NULL,
-//         .uri_match_fn = NULL
-// };
+    config.stack_size = 8192;                              // handlers build strings and scan WiFi
+    config.max_uri_handlers = 4;                           // only the two wildcard handlers
+    config.uri_match_fn = httpd_uri_match_wildcard;
+    config.lru_purge_enable = true;                        // free the oldest socket instead of refusing new ones
+    config.recv_wait_timeout = 10;
+    config.send_wait_timeout = 10;
 
-    ESP_ERROR_CHECK(httpd_start(&server_, &config));
+    esp_err_t err = httpd_start(&server_, &config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "httpd_start failed: %d", static_cast<int>(err));
+        server_ = nullptr;
+        return err;
+    }
 
-    ESP_LOGI(TAG, "HTTP server started");
+    const httpd_method_t methods[] = {HTTP_GET, HTTP_POST};
+    for (const httpd_method_t m : methods) {
+        httpd_uri_t uri = {};
+        uri.uri = "/*";
+        uri.method = m;
+        uri.handler = &HttpServer::onRequest;
+        uri.user_ctx = this;
+        err = httpd_register_uri_handler(server_, &uri);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "register handler failed: %d", static_cast<int>(err));
+            httpd_stop(server_);
+            server_ = nullptr;
+            return err;
+        }
+    }
+    return ESP_OK;
 }
 
 void HttpServer::stop() {
@@ -67,18 +114,4 @@ void HttpServer::stop() {
         httpd_stop(server_);
         server_ = nullptr;
     }
-}
-
-void HttpServer::registerEndpoint(const std::string& uri,
-                                  httpd_method_t method,
-                                  std::function<std::string()> handler) {
-    handlers_[uri] = handler;
-    httpd_uri_t endpoint = {
-        .uri = uri.c_str(),
-        .method = method,
-        .handler = dispatch_handler,
-        .user_ctx = nullptr
-    };
-    httpd_register_uri_handler(server_, &endpoint);
-    ESP_LOGI(TAG, "Registered endpoint: %s", uri.c_str());
 }

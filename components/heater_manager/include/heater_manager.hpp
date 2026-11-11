@@ -11,7 +11,8 @@ class HeaterManager {
 public:
     HeaterManager();
     void init();                                  // call once
-    void setTargetTemperature(float target);
+    bool setTargetTemperature(float target);      // false if the controller rejected it
+    float getTargetTemperature();
     void updateTemperature(float current_temp);   // from the sensor task
     void start();                                 // operator action: clears a latched fault
     void stop();
