@@ -6,6 +6,6 @@ idf_component_register(
          "test_heater_safety.cpp" "test_burst_scheduler.cpp" 
          "test_heater_controller.cpp" "test_heater_integration.cpp" "test_app_core.cpp"
     INCLUDE_DIRS "."
-    REQUIRES unity pid_controller ds18b20 sensors heater_core
+    REQUIRES unity pid_controller ds18b20 sensors heater_core app_core
     WHOLE_ARCHIVE
 )
